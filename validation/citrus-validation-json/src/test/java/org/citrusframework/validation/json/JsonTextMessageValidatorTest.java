@@ -117,6 +117,64 @@ public class JsonTextMessageValidatorTest extends UnitTestSupport {
     }
 
     @Test
+    public void testSloppyJsonValidationWithArraysShouldIgnoreOrderOnObjects() {
+        JsonTextMessageValidator validator = new JsonTextMessageValidator();
+        validator.setStrict(false);
+
+        Message receivedMessage = new DefaultMessage("[" +
+        		"{\"text\":\"Hello World!\", \"index\":1}, " +
+        		"{\"text\":\"Hallo Welt!\", \"index\":2}, " +
+        		"{\"text\":\"Hola del mundo!\", \"index\":3}]");
+        Message controlMessage = new DefaultMessage("[{\"text\":\"Hallo Welt!\", \"index\":2}] ");
+
+        JsonMessageValidationContext validationContext = new JsonMessageValidationContext();
+        validator.validateMessage(receivedMessage, controlMessage, context, validationContext);
+    }
+
+    @Test
+    public void testSloppyJsonValidationWithArraysShouldAllowMixedTypes() {
+        JsonTextMessageValidator validator = new JsonTextMessageValidator();
+        validator.setStrict(false);
+
+        Message receivedMessage = new DefaultMessage("[" +
+        		"1, " +
+        		"{\"text\":\"Hallo Welt!\", \"index\":2}, " +
+        		"\"pizza\"" +
+                "]");
+        Message controlMessage = new DefaultMessage("[1,{\"text\":\"Hallo Welt!\", \"index\":2},\"pizza\"]");
+
+        JsonMessageValidationContext validationContext = new JsonMessageValidationContext();
+        validator.validateMessage(receivedMessage, controlMessage, context, validationContext);
+    }
+
+    @Test
+    public void testSloppyJsonValidationWithArraysShouldIgnoreOrderAndMissingProperties() {
+        JsonTextMessageValidator validator = new JsonTextMessageValidator();
+        validator.setStrict(false);
+
+        Message receivedMessage = new DefaultMessage("[" +
+        		"{\"text\":\"Hello World!\", \"index\":1}, " +
+        		"{\"text\":\"Hallo Welt!\", \"index\":2}, " +
+        		"{\"text\":\"Hola del mundo!\", \"index\":3}]");
+        Message controlMessage = new DefaultMessage("[{\"index\": 1}] ");
+
+        JsonMessageValidationContext validationContext = new JsonMessageValidationContext();
+        validator.validateMessage(receivedMessage, controlMessage, context, validationContext);
+    }
+
+    @Test
+    public void testSloppyJsonValidationWithArraysShouldIgnoreOrderOnPrimitives() {
+        JsonTextMessageValidator validator = new JsonTextMessageValidator();
+        validator.setStrict(false);
+
+        Message receivedMessage = new DefaultMessage("[1, 2, 3]");
+        Message controlMessage = new DefaultMessage("[2] ");
+
+        JsonMessageValidationContext validationContext = new JsonMessageValidationContext();
+        validator.validateMessage(receivedMessage, controlMessage, context, validationContext);
+    }
+
+    @Test
     public void testJsonValidationWithNestedArrays() {
         JsonTextMessageValidator validator = new JsonTextMessageValidator();
 
@@ -225,8 +283,15 @@ public class JsonTextMessageValidatorTest extends UnitTestSupport {
             JsonMessageValidationContext validationContext = new JsonMessageValidationContext();
             validator.validateMessage(receivedMessage, controlMessage, context, validationContext);
         } catch (ValidationException e) {
-            Assert.assertTrue(e.getMessage().contains("expected '2'"));
-            Assert.assertTrue(e.getMessage().contains("but was '0'"));
+            Assert.assertEquals(e.getMessage(),
+                    "Value 'greetings' is not present, " +
+                            "expected '{\"index\":2,\"text\":\"Hallo Welt!\"}' " +
+                            "to be in collection '[" +
+                            "{\"index\":1,\"text\":\"Hello World!\"}," +
+                            "{\"index\":0,\"text\":\"Hallo Welt!\"}," +
+                            "{\"index\":3,\"text\":\"Hola del mundo!\"}" +
+                            "]'"
+            );
 
             return;
         }
