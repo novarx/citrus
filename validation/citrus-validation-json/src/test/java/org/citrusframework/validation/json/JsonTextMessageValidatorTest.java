@@ -37,6 +37,7 @@ import net.minidev.json.parser.ParseException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
@@ -89,13 +90,13 @@ public class JsonTextMessageValidatorTest extends UnitTestSupport {
         JsonTextMessageValidator validator = new JsonTextMessageValidator();
 
         Message receivedMessage = new DefaultMessage("[" +
-        		"{\"text\":\"Hello World!\", \"index\":1}, " +
-        		"{\"text\":\"Hallo Welt!\", \"index\":2}, " +
-        		"{\"text\":\"Hola del mundo!\", \"index\":3}]");
+                "{\"text\":\"Hello World!\", \"index\":1}, " +
+                "{\"text\":\"Hallo Welt!\", \"index\":2}, " +
+                "{\"text\":\"Hola del mundo!\", \"index\":3}]");
         Message controlMessage = new DefaultMessage("[" +
-        		"{\"text\":\"Hello World!\", \"index\":1}, " +
-        		"{\"text\":\"Hallo Welt!\", \"index\":2}, " +
-        		"{\"text\":\"Hola del mundo!\", \"index\":3}]");
+                "{\"text\":\"Hello World!\", \"index\":1}, " +
+                "{\"text\":\"Hallo Welt!\", \"index\":2}, " +
+                "{\"text\":\"Hola del mundo!\", \"index\":3}]");
 
         JsonMessageValidationContext validationContext = new JsonMessageValidationContext();
         validator.validateMessage(receivedMessage, controlMessage, context, validationContext);
@@ -107,9 +108,9 @@ public class JsonTextMessageValidatorTest extends UnitTestSupport {
         validator.setStrict(false);
 
         Message receivedMessage = new DefaultMessage("[" +
-        		"{\"text\":\"Hello World!\", \"index\":1}, " +
-        		"{\"text\":\"Hallo Welt!\", \"index\":2}, " +
-        		"{\"text\":\"Hola del mundo!\", \"index\":3}]");
+                "{\"text\":\"Hello World!\", \"index\":1}, " +
+                "{\"text\":\"Hallo Welt!\", \"index\":2}, " +
+                "{\"text\":\"Hola del mundo!\", \"index\":3}]");
         Message controlMessage = new DefaultMessage("[{\"text\":\"Hello World!\", \"index\":1}] ");
 
         JsonMessageValidationContext validationContext = new JsonMessageValidationContext();
@@ -122,9 +123,9 @@ public class JsonTextMessageValidatorTest extends UnitTestSupport {
         validator.setStrict(false);
 
         Message receivedMessage = new DefaultMessage("[" +
-        		"{\"text\":\"Hello World!\", \"index\":1}, " +
-        		"{\"text\":\"Hallo Welt!\", \"index\":2}, " +
-        		"{\"text\":\"Hola del mundo!\", \"index\":3}]");
+                "{\"text\":\"Hello World!\", \"index\":1}, " +
+                "{\"text\":\"Hallo Welt!\", \"index\":2}, " +
+                "{\"text\":\"Hola del mundo!\", \"index\":3}]");
         Message controlMessage = new DefaultMessage("[{\"text\":\"Hallo Welt!\", \"index\":2}] ");
 
         JsonMessageValidationContext validationContext = new JsonMessageValidationContext();
@@ -137,9 +138,9 @@ public class JsonTextMessageValidatorTest extends UnitTestSupport {
         validator.setStrict(false);
 
         Message receivedMessage = new DefaultMessage("[" +
-        		"1, " +
-        		"{\"text\":\"Hallo Welt!\", \"index\":2}, " +
-        		"\"pizza\"" +
+                "1, " +
+                "{\"text\":\"Hallo Welt!\", \"index\":2}, " +
+                "\"pizza\"" +
                 "]");
         Message controlMessage = new DefaultMessage("[1,{\"text\":\"Hallo Welt!\", \"index\":2},\"pizza\"]");
 
@@ -153,9 +154,9 @@ public class JsonTextMessageValidatorTest extends UnitTestSupport {
         validator.setStrict(false);
 
         Message receivedMessage = new DefaultMessage("[" +
-        		"{\"text\":\"Hello World!\", \"index\":1}, " +
-        		"{\"text\":\"Hallo Welt!\", \"index\":2}, " +
-        		"{\"text\":\"Hola del mundo!\", \"index\":3}]");
+                "{\"text\":\"Hello World!\", \"index\":1}, " +
+                "{\"text\":\"Hallo Welt!\", \"index\":2}, " +
+                "{\"text\":\"Hola del mundo!\", \"index\":3}]");
         Message controlMessage = new DefaultMessage("[{\"index\": 1}] ");
 
         JsonMessageValidationContext validationContext = new JsonMessageValidationContext();
@@ -345,6 +346,46 @@ public class JsonTextMessageValidatorTest extends UnitTestSupport {
         }
 
         Assert.fail("Missing validation exception due to type mismatch");
+    }
+
+    @Test
+    public void should() {
+        var fixture = new JsonTextMessageValidator();
+        var validationContext = new JsonMessageValidationContext();
+
+        var receivedMessage = new DefaultMessage("{\"test\": \"Lorem\"}");
+        var controlMessage = new DefaultMessage("{\"test\": \"@equalsIgnoreCase('lorem')@\"}");
+
+        assertThatNoException().isThrownBy(() ->  fixture.validateMessage(
+                receivedMessage, controlMessage, context, validationContext
+        ));
+    }
+
+    @Test
+    public void shouldThrowOnNonMatchingExpression() {
+        var fixture = new JsonTextMessageValidator();
+        var validationContext = new JsonMessageValidationContext();
+
+        var receivedMessage = new DefaultMessage("{\"test\": \"Lorem\"}");
+        var controlMessage = new DefaultMessage("{\"test\": \"@equalsIgnoreCase('lorem ipsum')@\"}");
+
+        assertThatThrownBy(() ->  fixture.validateMessage(receivedMessage, controlMessage, context, validationContext))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("EqualsIgnoreCaseValidationMatcher failed for field 'test'")
+                .hasMessageContaining("Received value is 'Lorem', control value is 'lorem ipsum'");
+    }
+
+    @Test
+    public void shouldThrowOnMissingControlProperty() {
+        var fixture = new JsonTextMessageValidator();
+        var validationContext = new JsonMessageValidationContext();
+
+        var receivedMessage = new DefaultMessage("{\"not-test\": \"lorem\"}");
+        var controlMessage = new DefaultMessage("{\"test\": \"lorem\"}");
+
+        assertThatThrownBy(() -> fixture.validateMessage(receivedMessage, controlMessage, context, validationContext))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Missing JSON entry: + 'test'");
     }
 
     @Test
